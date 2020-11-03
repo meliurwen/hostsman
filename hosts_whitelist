@@ -1,0 +1,9 @@
+# For IPv4 hosts
+127.0.0.1	localhost
+
+# For IPv6 hosts
+::1     localhost
+::1     ip6-localhost
+::1     ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
