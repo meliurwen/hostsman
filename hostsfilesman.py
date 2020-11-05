@@ -28,22 +28,115 @@ def filter_ip(df_h):
     return df_h[cont_ipv4_df_h | cont_ipv6_df_h]
 
 
+def read_listfile(hosts_file, address):
+    import_entries = []
+    line_number = 1
+    for line in hosts_file:
+        line = line.partition("#")[0].strip()
+        if line:
+            line = line.split()
+            line_length = len(line)
+            if line_length == 1:
+                import_entries.append([address, line[0]])
+            else:
+                print(
+                    "[Warning] Bad entry in '{path}' "
+                    "at line {line_n}".format(
+                        path=hosts_file.name,
+                        line_n=line_number
+                    ),
+                    file=sys.stderr
+                )
+        line_number += 1
+    return pd.DataFrame(import_entries, columns=["address", "hostname"])
+
+
 def read_hostsfile(hosts_file):
-    return pd.read_csv(
-        hosts_file,
-        header=None,
-        names=["address", "hostname"],
-        na_filter=False,
-        skip_blank_lines=True, comment="#",
-        delim_whitespace=True
-    )
+    import_entries = []
+    line_number = 1
+    for line in hosts_file:
+        line = line.partition("#")[0].strip()
+        if line:
+            line = line.split()
+            line_length = len(line)
+            if line_length == 2:
+                import_entries.append(line)
+            elif line_length > 2:
+                address = line[0]
+                for host in line[1:]:
+                    import_entries.append([address, host])
+            else:
+                print(
+                    "[Warning] Bad entry in '{path}' "
+                    "at line {line_n}".format(
+                        path=hosts_file.name,
+                        line_n=line_number
+                    ),
+                    file=sys.stderr
+                )
+        line_number += 1
+    return pd.DataFrame(import_entries, columns=["address", "hostname"])
+
+
+def detect_format(hosts_file):
+    line = hosts_file.readline()
+    file_format = "empty"
+    cnt = 1
+    while line and (cnt < 128):
+        line = line.partition("#")[0].strip()
+        if line:
+            line = line.split()
+            line_length = len(line)
+            if line_length == 2:
+                if file_format in ("empty", "2_format"):
+                    file_format = "2_format"
+                elif file_format == "multi_format":
+                    file_format = "multi_format"
+                else:
+                    return "unknown"
+            elif line_length > 2:
+                if file_format in ("empty", "2_format", "multi_format"):
+                    file_format = "multi_format"
+                else:
+                    return "unknown"
+            else:
+                if file_format in ("empty", "mono_format"):
+                    file_format = "mono_format"
+                else:
+                    return "unknown"
+        line = hosts_file.readline()
+        cnt += 1
+    hosts_file.seek(0)  # Reset read/write position in the file
+    return file_format
+
+
+def read_file(hosts_file, file_format="auto", address="0.0.0.0"):
+    if file_format == "auto":
+        if hosts_file.name == "<stdin>":
+            file_format = "multi_format"
+        else:
+            file_format = detect_format(hosts_file)
+    if file_format in ("multi_format", "2_format"):
+        hosts_file = read_hostsfile(hosts_file)
+    elif file_format == "mono_format":
+        hosts_file = read_listfile(hosts_file, address)
+    else:
+        print(
+            "[Warning] Unrecognized file '{path}'. "
+            "Treating it as empty...".format(
+                path=hosts_file.name
+            ),
+            file=sys.stderr
+        )
+        hosts_file = pd.DataFrame(columns=["address", "hostname"])
+    return hosts_file
 
 
 def append_hosts(hosts_files_list):
     df_h = pd.DataFrame(columns=["address", "hostname"])
     for hosts_file in hosts_files_list:
         df_h = df_h.append(
-            read_hostsfile(hosts_file),
+            read_file(hosts_file),
             ignore_index=True,
             sort=False
         )
@@ -55,12 +148,12 @@ def intersect_hosts(hosts_files_list):
     is_first_cycle = True
     for hosts_file in hosts_files_list:
         if is_first_cycle:
-            df_h = read_hostsfile(hosts_file)
+            df_h = read_file(hosts_file)
             is_first_cycle = False
         else:
             df_h = pd.merge(
                 df_h,
-                read_hostsfile(hosts_file)["hostname"],
+                read_file(hosts_file)["hostname"],
                 how="inner",
                 on="hostname",
                 sort=False,
@@ -73,12 +166,12 @@ def subctract_hosts(hosts_files_list):
     is_first_cycle = True
     for hosts_file in hosts_files_list:
         if is_first_cycle:
-            df_h = read_hostsfile(hosts_file)
+            df_h = read_file(hosts_file)
             is_first_cycle = False
         else:
             df_h = pd.merge(
                 df_h,
-                read_hostsfile(hosts_file)["hostname"],
+                read_file(hosts_file)["hostname"],
                 indicator=True,
                 how="left",
                 on="hostname",
@@ -104,9 +197,11 @@ def main(arguments):
             df_h = filter_cols(df_h, "address", IPV4_R)
         elif filter_mode == "ipv6":
             df_h = filter_cols(df_h, "address", IPV6_R)
-        else:
+        elif filter_mode == "all":
             df_h = filter_cols(df_h, "hostname", HNAME_RFC1123_R)
             df_h = filter_ip(df_h)
+        else:
+            pass
     if arguments.dedupe:
         df_h = df_h.drop_duplicates(
             subset=["hostname"],
@@ -161,7 +256,7 @@ if __name__ == "__main__":
         "-f", "--filter",
         nargs="+",
         default=[],
-        choices=["host", "ipv4", "ipv6", "all"],
+        choices=["host", "ipv4", "ipv6", "all", "none"],
         required=False,
         help="filter entries with invalid values"
     )
