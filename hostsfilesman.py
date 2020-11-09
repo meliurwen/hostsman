@@ -17,6 +17,15 @@ HNAME_RFC1123_R = r"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-
 IPV4_R = r"^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
 IPV6_R = r"^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$"
 
+BOM_CODEPOINTS = [u'\uFFFE', u'\uFEFF']
+
+
+def bom_codepoint(line):
+    for bom in BOM_CODEPOINTS:
+        if line.startswith(bom):
+            line = line.replace(bom, "")
+    return line
+
 
 def filter_cols(df_h, colname, regex):
     return df_h[df_h[colname].str.contains(regex, regex=True)]
@@ -32,6 +41,8 @@ def read_listfile(hosts_file, address):
     import_entries = []
     line_number = 1
     for line in hosts_file:
+        if line_number == 1:
+            line = bom_codepoint(line)
         line = line.partition("#")[0].strip()
         if line:
             line = line.split()
@@ -55,6 +66,8 @@ def read_hostsfile(hosts_file):
     import_entries = []
     line_number = 1
     for line in hosts_file:
+        if line_number == 1:
+            line = bom_codepoint(line)
         line = line.partition("#")[0].strip()
         if line:
             line = line.split()
@@ -80,6 +93,7 @@ def read_hostsfile(hosts_file):
 
 def detect_format(hosts_file):
     line = hosts_file.readline()
+    line = bom_codepoint(line)
     file_format = "empty"
     cnt = 1
     while line and (cnt < 128):
