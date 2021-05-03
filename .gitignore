@@ -1,2 +1,19 @@
+# Virtual Environment
 venv/
+.venv/
+
+# setup.py
+build/
+dist/
+*.egg*
+
+# Python
+__pycache__/
+
+# Tests
+.coverage
+coverage/
+.pytest_cache/
+
+# Other
 .vscode
