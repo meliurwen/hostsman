@@ -19,7 +19,7 @@ def get_version(rel_path):
     raise RuntimeError("Unable to find version string.")
 
 
-INSTALL_REQUIRE = [line.rstrip('\n') for line in open('requirements.txt')]
+INSTALL_REQUIRE = [line.rstrip('\n') for line in open('setup-requirements.txt')]
 LINT_REQUIRE = [line.rstrip('\n') for line in open('lint-requirements.txt')]
 TESTS_REQUIRE = [line.rstrip('\n') for line in open('test-requirements.txt')]
 DEV_REQUIRE = LINT_REQUIRE.extend(TESTS_REQUIRE)
