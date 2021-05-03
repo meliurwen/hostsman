@@ -1,0 +1,52 @@
+kind: pipeline
+type: docker
+name: default
+platform:
+  os: linux
+  arch: amd64
+steps:
+- name: build
+  image: python:3.9-slim-buster
+  commands:
+  - python3 -m venv venv
+  - . venv/bin/activate
+  # Workaround, pip install -r does not accept stuff from stdin
+  # See: https://github.com/pypa/pip/issues/7822#issuecomment-614205769
+  #      https://github.com/pypa/pip/issues/7822#issuecomment-614279444
+  - cat *requirements.txt | pip install -r /dev/stdin
+  - ./setup.py develop
+- name: pylint
+  image: python:3.9-slim-buster
+  commands:
+  - . venv/bin/activate
+  - pylint --output-format=text --rcfile=setup.cfg src/ tests/ *.py
+  depends_on:
+  - build
+- name: flake8
+  image: python:3.9-slim-buster
+  commands:
+  - . venv/bin/activate
+  - flake8
+  depends_on:
+  - build
+- name: pytest
+  image: python:3.9-slim-buster
+  commands:
+  - . venv/bin/activate
+  - pytest
+  depends_on:
+  - pylint
+  - flake8
+- name: send telegram notification
+  image: appleboy/drone-telegram
+  settings:
+    token:
+      from_secret: telegram_token
+    to:
+      from_secret: telegram_user_id
+  depends_on:
+  - pytest
+  when:
+    status:
+    - success
+    - failure
