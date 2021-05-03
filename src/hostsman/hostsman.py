@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-import argparse
-import warnings
 import pandas as pd
-
-__author__ = "Meliurwen"
-__version__ = "0.0.1"
-__license__ = "GPLv3"
 
 # hostname: https://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
 # ipv4: https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s16.html
@@ -194,106 +188,16 @@ def subctract_hosts(hosts_files_list):
     return df_h
 
 
-def main(arguments):
-    if arguments.union:
-        df_h = append_hosts(arguments.FILE)
-    elif arguments.intersection:
-        df_h = intersect_hosts(arguments.FILE)
-    elif arguments.subtraction:
-        df_h = subctract_hosts(arguments.FILE)
+def filter_hosts(filter_mode, df_h):
+    if filter_mode == "host":
+        df_h = filter_cols(df_h, "hostname", HNAME_RFC1123_R)
+    elif filter_mode == "ipv4":
+        df_h = filter_cols(df_h, "address", IPV4_R)
+    elif filter_mode == "ipv6":
+        df_h = filter_cols(df_h, "address", IPV6_R)
+    elif filter_mode == "all":
+        df_h = filter_cols(df_h, "hostname", HNAME_RFC1123_R)
+        df_h = filter_ip(df_h)
     else:
-        df_h = append_hosts(arguments.FILE)
-    for filter_mode in arguments.filter:
-        warnings.filterwarnings("ignore", 'This pattern has match groups')
-        if filter_mode == "host":
-            df_h = filter_cols(df_h, "hostname", HNAME_RFC1123_R)
-        elif filter_mode == "ipv4":
-            df_h = filter_cols(df_h, "address", IPV4_R)
-        elif filter_mode == "ipv6":
-            df_h = filter_cols(df_h, "address", IPV6_R)
-        elif filter_mode == "all":
-            df_h = filter_cols(df_h, "hostname", HNAME_RFC1123_R)
-            df_h = filter_ip(df_h)
-        else:
-            pass
-    if arguments.dedupe:
-        df_h = df_h.drop_duplicates(
-            subset=["hostname"],
-            keep="last",
-            ignore_index=True
-        )
-    if arguments.address:
-        df_h["address"] = arguments.address[0]
-
-    df_h.to_csv(
-        sys.stdout,
-        sep=" ",
-        columns=["address", "hostname"],
-        header=False,
-        index=False,
-        compression="infer"
-    )
-
-
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(
-        prog='Hosts File Manager',
-        description='Manages hosts files'
-    )
-    actions_group = parser.add_mutually_exclusive_group()
-    actions_group.add_argument(
-        "-u", "--union",
-        action="store_true",
-        required=False,
-        help="merge hosts files"
-    )
-    actions_group.add_argument(
-        "-i", "--intersection",
-        action="store_true",
-        required=False,
-        help="hosts in common between hosts files"
-    )
-    actions_group.add_argument(
-        "-s", "--subtraction",
-        action="store_true",
-        required=False,
-        help="hosts in common between hosts files"
-    )
-    parser.add_argument(
-        "-d", "--dedupe",
-        action="store_true",
-        required=False,
-        help="deduplicate entries with same hostnames"
-    )
-    parser.add_argument(
-        "-f", "--filter",
-        nargs="+",
-        default=[],
-        choices=["host", "ipv4", "ipv6", "all", "none"],
-        required=False,
-        help="filter entries with invalid values"
-    )
-    parser.add_argument(
-        "-a", "--address",
-        nargs=1,
-        type=str,
-        required=False,
-        help="assign the issued address to all the entries"
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s (version {version})".format(version=__version__)
-    )
-    parser.add_argument(
-        "FILE",
-        type=argparse.FileType('r'),
-        nargs="*",
-        default=[sys.stdin],
-        help="hosts file(s)"
-    )
-
-    args = parser.parse_args()
-
-    main(args)
+        pass
+    return df_h
