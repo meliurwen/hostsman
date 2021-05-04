@@ -11,12 +11,12 @@ def read(rel_path):
         return file_pointer.read()
 
 
-def get_version(rel_path):
+def get_metadata(rel_path, mdata):
     for line in read(rel_path).splitlines():
-        if line.startswith('__version__'):
+        if line.startswith(mdata):
             delim = '"' if '"' in line else "'"
             return line.split(delim)[1]
-    raise RuntimeError("Unable to find version string.")
+    raise RuntimeError("Unable to find metadata string.")
 
 
 INSTALL_REQUIRE = [line.rstrip('\n') for line in open('setup-requirements.txt')]
@@ -26,13 +26,13 @@ DEV_REQUIRE = LINT_REQUIRE.extend(TESTS_REQUIRE)
 
 setup(
     name='hostsman',
-    version=get_version("src/hostsman/__init__.py"),
+    version=get_metadata("src/hostsman/__init__.py", "__version__"),
     description='KISS and efficient tool to manage hosts files',
     long_description='KISS and efficient tool to manage hosts files',
-    author='Meliurwen',
-    author_email='meliurwen@gmail.com',
+    author=get_metadata("src/hostsman/__init__.py", "__author__"),
+    author_email=get_metadata("src/hostsman/__init__.py", "__email__"),
     url='https://git.domain.tld/meliurwen/hostsman',
-    license="GPLv3",
+    license=get_metadata("src/hostsman/__init__.py", "__license__"),
     packages=find_packages('src'),
     package_dir={'': 'src'},
     classifiers=[

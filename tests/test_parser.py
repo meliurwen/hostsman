@@ -16,7 +16,7 @@ def test_version(capsys):
     assert stdout_orig == "hostsman (version {})\n".format(__version__)
 
 
-# Tests presence and mutual exclusivity of set operations
+# Presence and mutual exclusivity of set operations
 def test_set_operations():
     parser_orig = parser_create()
 
