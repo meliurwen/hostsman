@@ -19,9 +19,13 @@ def get_metadata(rel_path, mdata):
     raise RuntimeError("Unable to find metadata string.")
 
 
-INSTALL_REQUIRE = [line.rstrip('\n') for line in open('setup-requirements.txt')]
-LINT_REQUIRE = [line.rstrip('\n') for line in open('lint-requirements.txt')]
-TESTS_REQUIRE = [line.rstrip('\n') for line in open('test-requirements.txt')]
+def get_requirements(requirements):
+    return [line.rstrip('\n') for line in open(requirements)]
+
+
+INSTALL_REQUIRE = get_requirements('setup-requirements.txt')
+LINT_REQUIRE = get_requirements('lint-requirements.txt')
+TESTS_REQUIRE = get_requirements('test-requirements.txt')
 DEV_REQUIRE = LINT_REQUIRE.extend(TESTS_REQUIRE)
 
 setup(
